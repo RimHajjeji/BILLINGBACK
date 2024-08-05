@@ -6,14 +6,15 @@ const cors = require('cors');
 dotenv.config({ path: './Config/config.env' })
 //import rout
 const UserRoute = require('./Routes/UserRoute');
-const AdminRoute = require('./Routes/AdminRoute')
+const DevisRoute = require('./Routes/DevisRoute');
+const AdminRoute = require('./Routes/AdminRoute');
 const MaterialRoute = require('./Routes/MaterialRoute');
-const ClientRoute = require('./Routes/ClientRoute')
-const ServiceRoute = require('./Routes/ServiceRoute')
-const CompanyRoute = require('./Routes/CompanyRoute')
-const InvoiceRoute = require('./Routes/InvoiceRoute')
-const AuthRegister = require('./Routes/AuthRout/RegisterRoute')
-const AuthLogin = require('./Routes/AuthRout/LoginRoute')
+const ClientRoute = require('./Routes/ClientRoute');
+const ServiceRoute = require('./Routes/ServiceRoute');
+const CompanyRoute = require('./Routes/CompanyRoute');
+const InvoiceRoute = require('./Routes/InvoiceRoute');
+const AuthRegister = require('./Routes/AuthRout/RegisterRoute');
+const AuthLogin = require('./Routes/AuthRout/LoginRoute');
 
 
 // express app
@@ -44,6 +45,7 @@ app.use('/material', MaterialRoute);
 app.use('/service', ServiceRoute);
 app.use('/company', CompanyRoute);
 app.use('/invoice', InvoiceRoute);
+app.use('/devis', DevisRoute);
 app.use('/registre', AuthRegister);
 app.use('/login', AuthLogin);
 
