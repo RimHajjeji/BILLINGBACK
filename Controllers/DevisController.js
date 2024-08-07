@@ -8,10 +8,11 @@ const create_devis = (req, res) => {
     const devis = new Devis(req.body)
     devis.save()
         .then(result => {
-            res.send(result);
+            res.status(201).send(result);
         })
         .catch(err => {
             console.log(err);
+            res.status(400).send('Error creating devis');
         });
 }
 
@@ -19,10 +20,11 @@ const create_devis = (req, res) => {
 const show_devis = (req, res) => {
     Devis.find().sort({ createdAt: -1 })
         .then((result) => {
-            res.send(result);
+            res.status(200).send(result);
         })
         .catch(err => {
             console.log(err);
+            res.status(500).send('Error fetching devis');
         });
 }
 
@@ -31,48 +33,46 @@ const show_devis_byid = (req, res) => {
     const id = req.params.id;
     Devis.findById(id)
         .then((result) => {
-            res.send(result);
+            if (!result) {
+                return res.status(404).send('Devis not found');
+            }
+            res.status(200).send(result);
         })
         .catch(err => {
             console.log(err);
+            res.status(500).send('Error fetching devis by id');
         });
 }
 
 // update devis
 const update_devis = (req, res) => {
-    console.log('test', req.body)
     const id = req.params.id;
-    Devis.findByIdAndUpdate(id, {
-        companyId: req.body.companyId,
-        clientId: req.body.clientId,
-        produit: req.body.produit,
-        details: req.body.details,
-        num: req.body.num,
-        tmf: req.body.tmf,
-        prix: req.body.prix,
-        etats: req.body.etats,
-        nomrs: req.body.nomrs,
-    })
+    Devis.findByIdAndUpdate(id, req.body, { new: true })
         .then((result) => {
-            res.status(200).send('devis updated')
+            if (!result) {
+                return res.status(404).send('Devis not found');
+            }
+            res.status(200).send('Devis updated');
         })
         .catch(err => {
             console.log(err);
+            res.status(500).send('Error updating devis');
         });
 }
 
 // update etat
 const update_devis_etat = (req, res) => {
-    console.log('test', req.body)
     const id = req.params.id;
-    Devis.findByIdAndUpdate(id, {
-        etats: req.body.etats,
-    })
+    Devis.findByIdAndUpdate(id, { etats: req.body.etats }, { new: true })
         .then((result) => {
-            res.status(200).send('devis updated etats')
+            if (!result) {
+                return res.status(404).send('Devis not found');
+            }
+            res.status(200).send('Devis etats updated');
         })
         .catch(err => {
             console.log(err);
+            res.status(500).send('Error updating devis etats');
         });
 }
 
@@ -81,141 +81,142 @@ const delete_devis = (req, res) => {
     const id = req.params.id;
     Devis.findByIdAndDelete(id)
         .then((result) => {
-            res.status(200).send('devis deleted')
+            if (!result) {
+                return res.status(404).send('Devis not found');
+            }
+            res.status(200).send('Devis deleted');
         })
         .catch(err => {
             console.log(err);
+            res.status(500).send('Error deleting devis');
         });
 }
 
+// Get devis prices by company id
 const Get_devis_Prix_by_company_id = async (req, res) => {
     const id = req.params.id
-    await Devis.find({ companyId: id }).sort({ createdAt: -1 }).populate('clientId').populate('materialId').populate('serviceId')
-        .then(async (result) => {
-            let obj = result
-            sum = {
-                montantHT: 0,
-                montantHTT: 0,
-                montontHTP: 0,
-                montontHTNP: 0,
-                tTVA: 0,
-                montantTTC: 0,
-                netapayer: 0,
+    try {
+        const result = await Devis.find({ companyId: id }).sort({ createdAt: -1 }).populate('clientId').populate('materialId').populate('serviceId');
+        let sum = {
+            montantHT: 0,
+            montantHTT: 0,
+            montontHTP: 0,
+            montontHTNP: 0,
+            tTVA: 0,
+            montantTTC: 0,
+            netapayer: 0,
+        };
+        let etat = {
+            pay: 0,
+            notpay: 0,
+            total: 0,
+        };
+
+        result.forEach(el => {
+            if (el?.materialId?.length > 0) {
+                el.materialId.forEach(el2 => {
+                    sum.montantHT += parseFloat(el2.prix);
+                    sum.tTVA = Math.round((sum.tTVA + parseFloat(el2.tva)) * 100) / 100;
+                    sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el2.ttc)) * 100) / 100;
+                });
             }
-            etat = {
-                pay: 0,
-                notpay: 0,
-                total: 0,
+            if (el.serviceId?.length > 0) {
+                el.serviceId.forEach(el3 => {
+                    sum.montantHT += parseFloat(el3.prix);
+                    sum.tTVA = Math.round((sum.tTVA + parseFloat(el3.tva)) * 100) / 100;
+                    sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el3.ttc)) * 100) / 100;
+                });
             }
-
-            obj.forEach(el => {
-                if (el?.materialId?.length > 0) {
-                    el.materialId.map((el2) => {
-                        sum.montantHT = sum.montantHT + parseFloat(el2.prix)
-                        sum.tTVA = Math.round((sum.tTVA + parseFloat(el2.tva)) * 100) / 100;
-                        sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el2.ttc)) * 100) / 100;
-                    })
-                }
-                if (el.serviceId?.length > 0) {
-                    el.serviceId.map((el3) => {
-                        sum.montantHT = sum.montantHT + parseFloat(el3.prix)
-                        sum.tTVA = Math.round((sum.tTVA + parseFloat(el3.tva)) * 100) / 100;
-                        sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el3.ttc)) * 100) / 100;
-                    })
-                }
-                if (el.etats) {
-                    etat.pay += 1
-                } else {
-                    etat.notpay += 1
-                }
-                if (el.etats === true) {
-                    sum.montontHTP = sum.montontHTP + parseFloat(el.emontantHT)
-                } else {
-                    sum.montontHTNP = sum.montontHTNP + parseFloat(el.emontantHT)
-                }
-                sum.montantHTT = sum.montantHTT + parseFloat(el.emontantHT)
-            })
-            sum.netapayer = Math.round((sum.montantTTC + 600) * 100) / 100;
-            etat.total = parseInt((etat.pay) + (etat.notpay));
-
-            console.log('number iss', sum)
-            res.status(200).send({ result, sum, etat })
-
-        })
-        .catch(err => {
-            console.log(err);
+            if (el.etats) {
+                etat.pay += 1;
+            } else {
+                etat.notpay += 1;
+            }
+            if (el.etats === true) {
+                sum.montontHTP += parseFloat(el.emontantHT);
+            } else {
+                sum.montontHTNP += parseFloat(el.emontantHT);
+            }
+            sum.montantHTT += parseFloat(el.emontantHT);
         });
-}
+        sum.netapayer = Math.round((sum.montantTTC + 600) * 100) / 100;
+        etat.total = parseInt(etat.pay + etat.notpay);
 
+        res.status(200).send({ result, sum, etat });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send('Error fetching devis prices by company id');
+    }
+};
+
+// Get devis by client id
 const Get_devis_byclient = async (req, res) => {
     const id = req.params.id
-    await Devis.find({ clientId: id }).sort({ createdAt: -1 }).populate('clientId').populate('materialId').populate('serviceId')
-        .then(async (result) => {
-            let obj = result
-            sum = {
-                montantHT: 0,
-                montantHTT: 0,
-                montontHTP: 0,
-                montontHTNP: 0,
-                tTVA: 0,
-                montantTTC: 0,
-                netapayer: 0,
+    try {
+        const result = await Devis.find({ clientId: id }).sort({ createdAt: -1 }).populate('clientId').populate('materialId').populate('serviceId');
+        let sum = {
+            montantHT: 0,
+            montantHTT: 0,
+            montontHTP: 0,
+            montontHTNP: 0,
+            tTVA: 0,
+            montantTTC: 0,
+            netapayer: 0,
+        };
+        let etat = {
+            pay: 0,
+            notpay: 0,
+            total: 0,
+        };
+
+        result.forEach(el => {
+            if (el?.materialId?.length > 0) {
+                el.materialId.forEach(el2 => {
+                    sum.montantHT += parseFloat(el2.prix);
+                    sum.tTVA = Math.round((sum.tTVA + parseFloat(el2.tva)) * 100) / 100;
+                    sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el2.ttc)) * 100) / 100;
+                });
             }
-            etat = {
-                pay: 0,
-                notpay: 0,
-                total: 0,
+            if (el.serviceId?.length > 0) {
+                el.serviceId.forEach(el3 => {
+                    sum.montantHT += parseFloat(el3.prix);
+                    sum.tTVA = Math.round((sum.tTVA + parseFloat(el3.tva)) * 100) / 100;
+                    sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el3.ttc)) * 100) / 100;
+                });
             }
-
-            obj.forEach(el => {
-                if (el?.materialId?.length > 0) {
-                    el.materialId.map((el2) => {
-                        sum.montantHT = sum.montantHT + parseFloat(el2.prix)
-                        sum.tTVA = Math.round((sum.tTVA + parseFloat(el2.tva)) * 100) / 100;
-                        sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el2.ttc)) * 100) / 100;
-                    })
-                }
-                if (el.serviceId?.length > 0) {
-                    el.serviceId.map((el3) => {
-                        sum.montantHT = sum.montantHT + parseFloat(el3.prix)
-                        sum.tTVA = Math.round((sum.tTVA + parseFloat(el3.tva)) * 100) / 100;
-                        sum.montantTTC = Math.round((sum.montantTTC + parseFloat(el3.ttc)) * 100) / 100;
-                    })
-                }
-                if (el.etats) {
-                    etat.pay += 1
-                } else {
-                    etat.notpay += 1
-                }
-                if (el.etats === true) {
-                    sum.montontHTP = sum.montontHTP + parseFloat(el.emontantHT)
-                } else {
-                    sum.montontHTNP = sum.montontHTNP + parseFloat(el.emontantHT)
-                }
-                sum.montantHTT = sum.montantHTT + parseFloat(el.emontantHT)
-            })
-            sum.netapayer = Math.round((sum.montantTTC + 600) * 100) / 100;
-            etat.total = parseInt((etat.pay) + (etat.notpay));
-
-            console.log('number iss', sum)
-            res.status(200).send({ result, sum, etat })
-
-        })
-        .catch(err => {
-            console.log(err);
+            if (el.etats) {
+                etat.pay += 1;
+            } else {
+                etat.notpay += 1;
+            }
+            if (el.etats === true) {
+                sum.montontHTP += parseFloat(el.emontantHT);
+            } else {
+                sum.montontHTNP += parseFloat(el.emontantHT);
+            }
+            sum.montantHTT += parseFloat(el.emontantHT);
         });
-}
+        sum.netapayer = Math.round((sum.montantTTC + 600) * 100) / 100;
+        etat.total = parseInt(etat.pay + etat.notpay);
 
+        res.status(200).send({ result, sum, etat });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send('Error fetching devis by client id');
+    }
+};
+
+// Get one devis by company id
 const Get_ons_devis_byclient = async (req, res) => {
     const id = req.params.id
-    await Devis.findOne({ companyId: id }).sort({ createdAt: -1 }).populate('clientId').populate('materialId').populate('serviceId')
-        .then(async (result) => {
-            res.status(200).send({ result })
-        })
-        .catch(err => {
-            console.log(err);
-        });
-}
+    try {
+        const result = await Devis.findOne({ companyId: id }).sort({ createdAt: -1 }).populate('clientId').populate('materialId').populate('serviceId');
+        res.status(200).send({ result });
+    } catch (err) {
+        console.log(err);
+        res.status(500).send('Error fetching one devis by company id');
+    }
+};
 
 module.exports = {
     create_devis,
@@ -226,5 +227,5 @@ module.exports = {
     Get_ons_devis_byclient,
     Get_devis_Prix_by_company_id,
     Get_devis_byclient,
-    update_devis_etat,
+    update_devis_etat
 };

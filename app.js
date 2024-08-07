@@ -1,10 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
-const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
-dotenv.config({ path: './Config/config.env' })
-//import rout
+
+// Load environment variables from config.env
+dotenv.config({ path: './Config/config.env' });
+
+// Import routes
 const UserRoute = require('./Routes/UserRoute');
 const DevisRoute = require('./Routes/DevisRoute');
 const AdminRoute = require('./Routes/AdminRoute');
@@ -16,28 +19,22 @@ const InvoiceRoute = require('./Routes/InvoiceRoute');
 const AuthRegister = require('./Routes/AuthRout/RegisterRoute');
 const AuthLogin = require('./Routes/AuthRout/LoginRoute');
 
+// Connect to the database
+const connectDB = require('./Config/db');
+connectDB();
 
-// express app
+// Express app
 const app = express();
-app.use(cookieParser())
-//config body_parser
-app.use(bodyParser.json({
-    extended: true
-}))
-///add cors for apis 
+
+// Middleware
+app.use(cookieParser());
+app.use(bodyParser.json()); // Parse JSON bodies
 app.use(cors({
     credentials: true,
-    origin: 'http://localhost:3000'
+    origin: 'http://localhost:3000' // Adjust this as needed
 }));
 
-//connect to db 
-const connectDB = require('./Config/db')
-//load config db
-connectDB();
-app.listen(3001);
-
-
-
+// Define routes
 app.use('/user', UserRoute);
 app.use('/admin', AdminRoute);
 app.use('/client', ClientRoute);
@@ -49,5 +46,14 @@ app.use('/devis', DevisRoute);
 app.use('/registre', AuthRegister);
 app.use('/login', AuthLogin);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
 
-
+// Start server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
